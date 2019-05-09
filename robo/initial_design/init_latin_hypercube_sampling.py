@@ -2,7 +2,7 @@
 import numpy as np
 
 
-def init_latin_hypercube_sampling(lower, upper, n_points, rng=None):
+def init_latin_hypercube_sampling(lower, upper, n_points, pool=None, rng=None):
     """
     Returns as initial design a N data points sampled from a latin hypercube.
 
@@ -34,4 +34,4 @@ def init_latin_hypercube_sampling(lower, upper, n_points, rng=None):
     # Shuffle samples in each dimension
     for i in range(n_dims):
         rng.shuffle(samples[i, :])
-    return samples.T
+    return samples.T, pool

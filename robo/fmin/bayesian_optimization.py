@@ -12,6 +12,7 @@ from robo.models.random_forest import RandomForest
 from robo.maximizers.scipy_optimizer import SciPyOptimizer
 from robo.maximizers.random_sampling import RandomSampling
 from robo.maximizers.differential_evolution import DifferentialEvolution
+from robo.maximizers.exact_sampling import ExactSampling
 from robo.solver.bayesian_optimization import BayesianOptimization
 from robo.acquisition_functions.ei import EI
 from robo.acquisition_functions.pi import PI
@@ -19,6 +20,7 @@ from robo.acquisition_functions.log_ei import LogEI
 from robo.acquisition_functions.lcb import LCB
 from robo.acquisition_functions.marginalization import MarginalizationGPMCMC
 from robo.initial_design import init_latin_hypercube_sampling
+from robo.initial_design import init_exact_random
 
 
 logger = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X_init=None, Y_init=None,
                           maximizer="random", acquisition_func="log_ei", model_type="gp_mcmc",
-                          n_init=3, rng=None, output_path=None):
+                          n_init=3, rng=None, output_path=None, pool=None):
     """
     General interface for Bayesian optimization for global black box
     optimization problems.
@@ -46,7 +48,7 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
             Initial points to warmstart BO
     Y_init: np.ndarray(N,1)
             Function values of the already initial points
-    maximizer: {"random", "scipy", "differential_evolution"}
+    maximizer: {"random", "scipy", "differential_evolution", "exact"}
         The optimizer for the acquisition function.
     acquisition_func: {"ei", "log_ei", "lcb", "pi"}
         The acquisition function
@@ -60,6 +62,8 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
         If None no output will be saved to disk.
     rng: numpy.random.RandomState
         Random number generator
+    pool: np.ndarray(N,D)
+          Candidate pool containing possible x
 
     Returns
     -------
@@ -134,14 +138,21 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
         max_func = SciPyOptimizer(acquisition_func, lower, upper, rng=rng)
     elif maximizer == "differential_evolution":
         max_func = DifferentialEvolution(acquisition_func, lower, upper, rng=rng)
+    elif maximizer == "exact":
+        max_func = ExactSampling(acquisition_func, lower, upper,  rng=rng)
     else:
         raise ValueError("'{}' is not a valid function to maximize the "
                          "acquisition function".format(maximizer))
 
+    if pool:
+        init_design = init_exact_random
+    else:
+        init_design = init_latin_hypercube_sampling
+
     bo = BayesianOptimization(objective_function, lower, upper,
-                              acquisition_func, model, max_func,
+                              acquisition_func, model, max_func, pool,
                               initial_points=n_init, rng=rng,
-                              initial_design=init_latin_hypercube_sampling,
+                              initial_design=init_design,
                               output_path=output_path)
 
     x_best, f_min = bo.run(num_iterations, X=X_init, y=Y_init)

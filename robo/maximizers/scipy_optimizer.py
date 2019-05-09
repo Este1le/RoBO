@@ -48,7 +48,7 @@ class SciPyOptimizer(BaseMaximizer):
         else:
             return a
 
-    def maximize(self):
+    def maximize(self, pool=None):
         """
         Maximizes the given acquisition function.
 
@@ -79,4 +79,4 @@ class SciPyOptimizer(BaseMaximizer):
 
         best = np.argmin(cand_vals)
 
-        return np.clip(cand[best], self.lower, self.upper)
+        return np.clip(cand[best], self.lower, self.upper), pool

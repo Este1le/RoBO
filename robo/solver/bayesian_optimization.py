@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class BayesianOptimization(BaseSolver):
 
     def __init__(self, objective_func, lower, upper,
-                 acquisition_func, model, maximize_func,
+                 acquisition_func, model, maximize_func, pool,
                  initial_design=init_random_uniform,
                  initial_points=3,
                  output_path=None,
@@ -63,6 +63,7 @@ class BayesianOptimization(BaseSolver):
         self.model = model
         self.acquisition_func = acquisition_func
         self.maximize_func = maximize_func
+        self.pool = pool
         self.start_time = time.time()
         self.initial_design = initial_design
         self.objective_func = objective_func
@@ -112,9 +113,11 @@ class BayesianOptimization(BaseSolver):
             y = []
 
             start_time_overhead = time.time()
-            init = self.initial_design(self.lower,
+
+            init, self.pool = self.initial_design(self.lower,
                                        self.upper,
                                        self.init_points,
+                                       pool=self.pool,
                                        rng=self.rng)
             time_overhead = (time.time() - start_time_overhead) / self.init_points
 
@@ -242,8 +245,8 @@ class BayesianOptimization(BaseSolver):
 
             logger.info("Maximize acquisition function...")
             t = time.time()
-            x = self.maximize_func.maximize()
-
+            x, self.pool = self.maximize_func.maximize(pool=self.pool)
+            logger.info(str(self.pool.shape[0]) + " number of candidates are left in the pool.")
             logger.info("Time to maximize the acquisition function: %f", (time.time() - t))
 
         return x
