@@ -24,7 +24,7 @@ class RandomSampling(BaseMaximizer):
         self.n_samples = n_samples
         super(RandomSampling, self).__init__(objective_function, lower, upper, rng)
 
-    def maximize(self, pool=None):
+    def maximize(self):
         """
         Maximizes the given acquisition function.
 
@@ -49,4 +49,4 @@ class RandomSampling(BaseMaximizer):
 
         x_star = X[y.argmax()]
 
-        return x_star, pool
+        return x_star

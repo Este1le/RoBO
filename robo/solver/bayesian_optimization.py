@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 class BayesianOptimization(BaseSolver):
 
     def __init__(self, objective_func, lower, upper,
-                 acquisition_func, model, maximize_func, pool,
+                 acquisition_func, model, maximize_func, pool, best,
+                 sampling_method, distance, replacement,
                  initial_design=init_random_uniform,
                  initial_points=3,
                  output_path=None,
@@ -63,7 +64,13 @@ class BayesianOptimization(BaseSolver):
         self.model = model
         self.acquisition_func = acquisition_func
         self.maximize_func = maximize_func
+
         self.pool = pool
+        self.best = best
+        self.sampling_method = sampling_method
+        self.distance = distance
+        self.replacement = replacement
+
         self.start_time = time.time()
         self.initial_design = initial_design
         self.objective_func = objective_func
@@ -114,10 +121,16 @@ class BayesianOptimization(BaseSolver):
 
             start_time_overhead = time.time()
 
-            init, self.pool = self.initial_design(self.lower,
+            # init, self.pool = self.initial_design(self.lower,
+            #                          self.upper,
+            #                            self.init_points,
+            #                            pool=self.pool,
+            #                            rng=self.rng)
+            init = self.initial_design(self.lower,
                                        self.upper,
                                        self.init_points,
                                        pool=self.pool,
+                                       replacement=self.replacement,
                                        rng=self.rng)
             time_overhead = (time.time() - start_time_overhead) / self.init_points
 
@@ -200,6 +213,9 @@ class BayesianOptimization(BaseSolver):
             if self.output_path is not None:
                 self.save_output(it)
 
+            if new_y == self.best:
+                break
+
         logger.info("Return %s as incumbent with error %f ",
                     self.incumbents[-1], self.incumbents_values[-1])
 
@@ -226,11 +242,11 @@ class BayesianOptimization(BaseSolver):
         """
 
         if X is None and y is None:
-            x = self.initial_design(self.lower, self.upper, 1, rng=self.rng)[0, :]
+            x = self.initial_design(self.lower, self.upper, 1, pool=self.pool, replacement=self.replacement, rng=self.rng)[0, :]
 
         elif X.shape[0] == 1:
             # We need at least 2 data points to train a GP
-            x = self.initial_design(self.lower, self.upper, 1, rng=self.rng)[0, :]
+            x = self.initial_design(self.lower, self.upper, 1, pool=self.pool, replacement=self.replacement, rng=self.rng)[0, :]
 
         else:
             try:
@@ -245,8 +261,8 @@ class BayesianOptimization(BaseSolver):
 
             logger.info("Maximize acquisition function...")
             t = time.time()
-            x, self.pool = self.maximize_func.maximize(pool=self.pool)
-            logger.info(str(self.pool.shape[0]) + " number of candidates are left in the pool.")
+            x = self.maximize_func.maximize(pool=self.pool)
+            #logger.info(str(self.pool.shape[0]) + " number of candidates are left in the pool.")
             logger.info("Time to maximize the acquisition function: %f", (time.time() - t))
 
         return x

@@ -13,14 +13,15 @@ from robo.maximizers.scipy_optimizer import SciPyOptimizer
 from robo.maximizers.random_sampling import RandomSampling
 from robo.maximizers.differential_evolution import DifferentialEvolution
 from robo.maximizers.exact_sampling import ExactSampling
+from robo.maximizers.approx_sampling import ApproxSampling
 from robo.solver.bayesian_optimization import BayesianOptimization
 from robo.acquisition_functions.ei import EI
 from robo.acquisition_functions.pi import PI
 from robo.acquisition_functions.log_ei import LogEI
 from robo.acquisition_functions.lcb import LCB
 from robo.acquisition_functions.marginalization import MarginalizationGPMCMC
-from robo.initial_design import init_latin_hypercube_sampling
-from robo.initial_design import init_exact_random
+from robo.initial_design.init_latin_hypercube_sampling import init_latin_hypercube_sampling
+from robo.initial_design.init_exact_random import init_exact_random
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,8 @@ logger = logging.getLogger(__name__)
 
 def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X_init=None, Y_init=None,
                           maximizer="random", acquisition_func="log_ei", model_type="gp_mcmc",
-                          n_init=3, rng=None, output_path=None, pool=None):
+                          n_init=3, rng=None, output_path=None,
+                          sampling_method="origin", distance="cosine", replacement=True, pool=None, best=19.490554):
     """
     General interface for Bayesian optimization for global black box
     optimization problems.
@@ -48,7 +50,7 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
             Initial points to warmstart BO
     Y_init: np.ndarray(N,1)
             Function values of the already initial points
-    maximizer: {"random", "scipy", "differential_evolution", "exact"}
+    maximizer: {"random", "scipy", "differential_evolution"}
         The optimizer for the acquisition function.
     acquisition_func: {"ei", "log_ei", "lcb", "pi"}
         The acquisition function
@@ -62,9 +64,20 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
         If None no output will be saved to disk.
     rng: numpy.random.RandomState
         Random number generator
+    sampling_method: {"origin", "approx", "exact"}
+        Specify the method to choose next sample to update model.
+        approx: choose the sample in the candidate pool that is closest (measured by distance
+        arg) to the one returned from maximizing acquisition function.
+        exact: evaluate all samples in the candidate pool on acquisition function
+        and choose the one with maximum output.
+    distance: {"cosine", "euclidean"}
+        The distance measurement for approximation sampling.
+    replacement: boolean
+        Whether to sample from pool with replacement. (approximation sampling)
     pool: np.ndarray(N,D)
-          Candidate pool containing possible x
-
+        Candidate pool containing possible x
+    best: float
+        Stop training when the best point is sampled.
     Returns
     -------
         dict with all results
@@ -138,19 +151,22 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
         max_func = SciPyOptimizer(acquisition_func, lower, upper, rng=rng)
     elif maximizer == "differential_evolution":
         max_func = DifferentialEvolution(acquisition_func, lower, upper, rng=rng)
-    elif maximizer == "exact":
-        max_func = ExactSampling(acquisition_func, lower, upper,  rng=rng)
     else:
         raise ValueError("'{}' is not a valid function to maximize the "
                          "acquisition function".format(maximizer))
 
-    if pool:
-        init_design = init_exact_random
+    if sampling_method == "exact":
+        max_func = ExactSampling(acquisition_func, lower, upper, pool, rng=rng)
+        init_design, pool = init_exact_random
+    elif sampling_method == "approx":
+        max_func = ApproxSampling(acquisition_func, lower, upper, pool, distance, replacement, rng=rng)
+        init_design, pool = init_exact_random
     else:
-        init_design = init_latin_hypercube_sampling
+        init_design, pool = init_latin_hypercube_sampling
 
     bo = BayesianOptimization(objective_function, lower, upper,
-                              acquisition_func, model, max_func, pool,
+                              acquisition_func, model, max_func, pool, best,
+                              sampling_method, distance, replacement,
                               initial_points=n_init, rng=rng,
                               initial_design=init_design,
                               output_path=output_path)

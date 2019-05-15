@@ -33,7 +33,7 @@ class DifferentialEvolution(BaseMaximizer):
 
         return _l
 
-    def maximize(self, pool=None):
+    def maximize(self):
         """
         Maximizes the given acquisition function.
 
@@ -48,4 +48,4 @@ class DifferentialEvolution(BaseMaximizer):
         res = sp.optimize.differential_evolution(self._acquisition_fkt_wrapper(self.objective_func),
                                                  bounds, maxiter=self.n_iters)
 
-        return np.clip(res["x"], self.lower, self.upper), pool
+        return np.clip(res["x"], self.lower, self.upper)

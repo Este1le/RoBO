@@ -6,7 +6,7 @@ from robo.initial_design import init_random_uniform
 
 class ExactSampling(BaseMaximizer):
 
-    def __init__(self, objective_function, lower, upper, n_samples=500, rng=None):
+    def __init__(self, objective_function, lower, upper, pool,rng=None):
         """
         Samples rest candidates in the candidate pool and returns the point with the highest objective value.
 
@@ -23,10 +23,10 @@ class ExactSampling(BaseMaximizer):
         n_samples: int
             Number of candidates that are samples
         """
-        self.n_samples = n_samples
+        self.pool = pool
         super(ExactSampling, self).__init__(objective_function, lower, upper, rng)
 
-    def maximize(self, pool=None):
+    def maximize(self):
         """
         Maximizes the given acquisition function.
 
@@ -35,10 +35,10 @@ class ExactSampling(BaseMaximizer):
         np.ndarray(N,D)
             Point with highest acquisition value.
         """
-        X = pool
+        X = self.pool
         y = self.objective_func(X)
         x_star = X[y.argmax()]
 
-        pool = np.delete(pool, y.argmax(), 0)
+        #pool = np.delete(pool, y.argmax(), 0)
 
-        return x_star, pool
+        return x_star#, pool

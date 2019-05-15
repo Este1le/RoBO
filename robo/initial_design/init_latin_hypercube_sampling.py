@@ -2,7 +2,7 @@
 import numpy as np
 
 
-def init_latin_hypercube_sampling(lower, upper, n_points, pool=None, rng=None):
+def init_latin_hypercube_sampling(lower, upper, n_points, pool=None, replacement=True, rng=None):
     """
     Returns as initial design a N data points sampled from a latin hypercube.
 
