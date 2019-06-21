@@ -126,7 +126,7 @@ class BayesianOptimization(BaseSolver):
             #                            self.init_points,
             #                            pool=self.pool,
             #                            rng=self.rng)
-            init = self.initial_design(self.lower,
+            init, self.pool = self.initial_design(self.lower,
                                        self.upper,
                                        self.init_points,
                                        pool=self.pool,
@@ -261,7 +261,10 @@ class BayesianOptimization(BaseSolver):
 
             logger.info("Maximize acquisition function...")
             t = time.time()
-            x = self.maximize_func.maximize(pool=self.pool)
+            if self.sampling_method=="approx" or self.sampling_method=="exact":
+                x, self.pool = self.maximize_func.maximize(pool=self.pool)
+            else:
+                x = self.maximize_func.maximize()
             #logger.info(str(self.pool.shape[0]) + " number of candidates are left in the pool.")
             logger.info("Time to maximize the acquisition function: %f", (time.time() - t))
 

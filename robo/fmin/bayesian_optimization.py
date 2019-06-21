@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 
 def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X_init=None, Y_init=None,
                           maximizer="random", acquisition_func="log_ei", model_type="gp_mcmc",
-                          n_init=3, rng=None, output_path=None,
-                          sampling_method="origin", distance="cosine", replacement=True, pool=None, best=19.490554):
+                          n_init=3, rng=None, output_path=None, kernel="matern32",
+                          sampling_method="origin", distance="cosine", replacement=True, pool=None, best=None):
     """
     General interface for Bayesian optimization for global black box
     optimization problems.
@@ -64,6 +64,10 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
         If None no output will be saved to disk.
     rng: numpy.random.RandomState
         Random number generator
+    kernel: {"constant", "white", "dotproduct",
+             "radial", "exp", "expsquared", "matern32", "matern52",
+             "cosine", "expsine2", "custom"}
+        Specify the kernel for Gaussian process.
     sampling_method: {"origin", "approx", "exact"}
         Specify the method to choose next sample to update model.
         approx: choose the sample in the candidate pool that is closest (measured by distance
@@ -73,7 +77,7 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
     distance: {"cosine", "euclidean"}
         The distance measurement for approximation sampling.
     replacement: boolean
-        Whether to sample from pool with replacement. (approximation sampling)
+        Whether to sample from pool with replacement.
     pool: np.ndarray(N,D)
         Candidate pool containing possible x
     best: float
@@ -93,8 +97,27 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
     n_dims = lower.shape[0]
 
     initial_ls = np.ones([n_dims])
-    exp_kernel = george.kernels.Matern52Kernel(initial_ls,
-                                               ndim=n_dims)
+    if kernel == "constant":
+        exp_kernel = george.kernels.ConstantKernel(1, ndim=n_dims)
+    elif kernel == "white":
+        exp_kernel = george.kernels.WhiteKernel(1, ndim=n_dims)
+    elif kernel == "dotproduct":
+        exp_kernel = george.kernels.DotProductKernel(ndim=n_dims)
+    elif kernel == "radial":
+        exp_kernel = george.kernels.RadialKernel(initial_ls, ndim=n_dims)
+    elif kernel == "exp":
+        exp_kernel = george.kernels.ExpKernel(initial_ls, ndim=n_dims)
+    elif kernel == "expsquared":
+        exp_kernel = george.kernels.ExpSquaredKernel(initial_ls, ndim=n_dims)
+    elif kernel == "matern32":
+        exp_kernel = george.kernels.Matern32Kernel(initial_ls, ndim=n_dims)
+    elif kernel =="matern52":
+        exp_kernel = george.kernels.Matern52Kernel(initial_ls, ndim=n_dims)
+    elif kernel == "cosine":
+        exp_kernel = george.kernels.CosineKernel(2, ndim=n_dims)
+    elif kernel == "expsine2":
+        exp_kernel = george.kernels.ExpSine2Kernel(2, 2, ndim=n_dims)
+
     kernel = cov_amp * exp_kernel
 
     prior = DefaultPrior(len(kernel) + 1)
@@ -156,13 +179,13 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
                          "acquisition function".format(maximizer))
 
     if sampling_method == "exact":
-        max_func = ExactSampling(acquisition_func, lower, upper, pool, rng=rng)
-        init_design, pool = init_exact_random
+        max_func = ExactSampling(acquisition_func, lower, upper, pool, replacement, rng=rng)
+        init_design = init_exact_random
     elif sampling_method == "approx":
         max_func = ApproxSampling(acquisition_func, lower, upper, pool, distance, replacement, rng=rng)
-        init_design, pool = init_exact_random
+        init_design = init_exact_random
     else:
-        init_design, pool = init_latin_hypercube_sampling
+        init_design = init_latin_hypercube_sampling
 
     bo = BayesianOptimization(objective_function, lower, upper,
                               acquisition_func, model, max_func, pool, best,

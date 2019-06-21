@@ -34,7 +34,7 @@ class ApproxSampling(BaseMaximizer):
         self.distance = distance
         self.random_sampling = RandomSampling(objective_function, lower, upper, n_samples, rng)
         self.replacement = replacement
-        super(ExactSampling, self).__init__(objective_function, lower, upper, rng)
+        super(ApproxSampling, self).__init__(objective_function, lower, upper, rng)
 
     def _cosine_similarity(self, x, x_):
         """
@@ -50,7 +50,7 @@ class ApproxSampling(BaseMaximizer):
         res = np.linalg.norm(np.array(x)-np.array(x_))
         return res
 
-    def maximize(self):
+    def maximize(self, pool):
         """
         Maximizes the given acquisition function.
 
@@ -59,6 +59,7 @@ class ApproxSampling(BaseMaximizer):
         np.ndarray(1,D)
             Point with highest acquisition value.
         """
+        self.pool = pool
         x_star_ = self.random_sampling.maximize()
 
         if self.distance == "cosine":
@@ -68,9 +69,9 @@ class ApproxSampling(BaseMaximizer):
 
         id_max = np.argmax(np.array([calsim(x_star_,x_) for x_ in self.pool]))
 
+        x_star = self.pool[id_max]
+
         if not self.replacement:
             self.pool = np.delete(self.pool, id_max, 0)
 
-        x_star = self.pool[id_max]
-
-        return x_star
+        return x_star, pool
