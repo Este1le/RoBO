@@ -1,5 +1,4 @@
 import logging
-import george
 import numpy as np
 
 from pybnn.dngo import DNGO
@@ -23,13 +22,12 @@ from robo.acquisition_functions.marginalization import MarginalizationGPMCMC
 from robo.initial_design.init_latin_hypercube_sampling import init_latin_hypercube_sampling
 from robo.initial_design.init_exact_random import init_exact_random
 
-
 logger = logging.getLogger(__name__)
 
 
 def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X_init=None, Y_init=None,
                           maximizer="random", acquisition_func="log_ei", model_type="gp_mcmc",
-                          n_init=3, rng=None, output_path=None, kernel="matern32",
+                          n_init=3, rng=None, output_path=None, kernel=None,
                           sampling_method="origin", distance="cosine", replacement=True, pool=None, best=None):
     """
     General interface for Bayesian optimization for global black box
@@ -64,9 +62,10 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
         If None no output will be saved to disk.
     rng: numpy.random.RandomState
         Random number generator
-    kernel: {"constant", "white", "dotproduct",
-             "radial", "exp", "expsquared", "matern32", "matern52",
-             "cosine", "expsine2", "custom"}
+    kernel: george.kernels.ConstantKernel
+            {"constant", "polynomial", "linear", "dotproduct",
+             "exp", "expsquared", "matern32", "matern52", "rationalquadratic",
+             "cosine", "expsine2", "heuristic"}
         Specify the kernel for Gaussian process.
     sampling_method: {"origin", "approx", "exact"}
         Specify the method to choose next sample to update model.
@@ -94,31 +93,38 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
         rng = np.random.RandomState(np.random.randint(0, 10000))
 
     cov_amp = 2
-    n_dims = lower.shape[0]
+    #n_dims = lower.shape[0]
 
-    initial_ls = np.ones([n_dims])
-    if kernel == "constant":
-        exp_kernel = george.kernels.ConstantKernel(1, ndim=n_dims)
-    elif kernel == "white":
-        exp_kernel = george.kernels.WhiteKernel(1, ndim=n_dims)
-    elif kernel == "dotproduct":
-        exp_kernel = george.kernels.DotProductKernel(ndim=n_dims)
-    elif kernel == "radial":
-        exp_kernel = george.kernels.RadialKernel(initial_ls, ndim=n_dims)
-    elif kernel == "exp":
-        exp_kernel = george.kernels.ExpKernel(initial_ls, ndim=n_dims)
-    elif kernel == "expsquared":
-        exp_kernel = george.kernels.ExpSquaredKernel(initial_ls, ndim=n_dims)
-    elif kernel == "matern32":
-        exp_kernel = george.kernels.Matern32Kernel(initial_ls, ndim=n_dims)
-    elif kernel =="matern52":
-        exp_kernel = george.kernels.Matern52Kernel(initial_ls, ndim=n_dims)
-    elif kernel == "cosine":
-        exp_kernel = george.kernels.CosineKernel(2, ndim=n_dims)
-    elif kernel == "expsine2":
-        exp_kernel = george.kernels.ExpSine2Kernel(2, 2, ndim=n_dims)
+    #initial_ls = np.ones([n_dims])
 
-    kernel = cov_amp * exp_kernel
+    # if kernel == "constant":
+    #     exp_kernel = george.kernels.ConstantKernel(1, ndim=n_dims)
+    # elif kernel == "polynomial":
+    #     exp_kernel = george.kernels.PolynomialKernel(log_sigma2=1, order=3, ndim=n_dims)
+    # elif kernel == "linear":
+    #     exp_kernel = george.kernels.LinearKernel(log_gamma2=1, order=3, ndim=n_dims)
+    # elif kernel == "dotproduct":
+    #     exp_kernel = george.kernels.DotProductKernel(ndim=n_dims)
+    # elif kernel == "exp":
+    #     exp_kernel = george.kernels.ExpKernel(initial_ls, ndim=n_dims)
+    # elif kernel == "expsquared":
+    #     exp_kernel = george.kernels.ExpSquaredKernel(initial_ls, ndim=n_dims)
+    # elif kernel == "matern32":
+    #     exp_kernel = george.kernels.Matern32Kernel(initial_ls, ndim=n_dims)
+    # elif kernel == "matern52":
+    #     exp_kernel = george.kernels.Matern52Kernel(initial_ls, ndim=n_dims)
+    # elif kernel == "rationalquadratic":
+    #     exp_kernel = george.kernels.RationalQuadraticKernel(log_alpha=1, metric=initial_ls, ndim=n_dims)
+    # elif kernel == "cosine":
+    #     exp_kernel = george.kernels.CosineKernel(4, ndim=n_dims)
+    # elif kernel == "expsine2":
+    #     exp_kernel = george.kerngels.ExpSine2Kernel(1, 2, ndim=n_dims)
+    # elif kernel == "heuristic":
+    #     exp_kernel = george.kernels.PythonKernel(heuristic_kernel_function, ndim=n_dims)
+    # else:
+    #     raise ValueError("'{}' is not a valid kernel".format(kernel))
+
+    kernel = cov_amp * kernel
 
     prior = DefaultPrior(len(kernel) + 1)
 
@@ -182,7 +188,7 @@ def bayesian_optimization(objective_function, lower, upper, num_iterations=30, X
         max_func = ExactSampling(acquisition_func, lower, upper, pool, replacement, rng=rng)
         init_design = init_exact_random
     elif sampling_method == "approx":
-        max_func = ApproxSampling(acquisition_func, lower, upper, pool, distance, replacement, rng=rng)
+        max_func = ApproxSampling(acquisition_func, lower, upper, pool, replacement, distance, rng=rng)
         init_design = init_exact_random
     else:
         init_design = init_latin_hypercube_sampling

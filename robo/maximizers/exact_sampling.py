@@ -6,7 +6,7 @@ from robo.initial_design import init_random_uniform
 
 class ExactSampling(BaseMaximizer):
 
-    def __init__(self, objective_function, lower, upper, replacement, pool, rng=None):
+    def __init__(self, objective_function, lower, upper, pool, replacement,  rng=None):
         """
         Samples rest candidates in the candidate pool and returns the point with the highest objective value.
 
@@ -26,6 +26,7 @@ class ExactSampling(BaseMaximizer):
             Number of candidates that are samples
         """
         self.pool = pool
+        self.replacement = replacement
         super(ExactSampling, self).__init__(objective_function, lower, upper, rng)
 
     def maximize(self, pool):

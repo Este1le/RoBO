@@ -8,7 +8,7 @@ from robo.initial_design import init_random_uniform
 
 class ApproxSampling(BaseMaximizer):
 
-    def __init__(self, objective_function, lower, upper, pool, distance, replacement, n_samples=500, rng=None):
+    def __init__(self, objective_function, lower, upper, pool, replacement, distance, n_samples=500, rng=None):
         """
         Samples rest candidates in the candidate pool and returns the point with the highest objective value.
 
